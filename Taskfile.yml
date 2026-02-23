@@ -1,5 +1,5 @@
 version: '3'
-
+dotenv: ['apps/api/.env']
 tasks:
   api:run:
     desc: Run the Go API server
@@ -12,6 +12,12 @@ tasks:
     dir: apps/api
     cmds:
       - go build -o bin/server cmd/server/main.go
+
+  api:tidy:
+    desc: Tidy Go dependencies
+    dir: apps/api
+    cmds:
+      - go mod tidy
 
   web:dev:
     desc: Start the React dev server
@@ -26,5 +32,29 @@ tasks:
       - bun run build
 
   dev:
-    desc: Start API and web dev servers in parallel
+    desc: Start API and web in parallel
     deps: [api:run, web:dev]
+
+  db:migrate:
+    desc: Run database migrations
+    dir: apps/api
+    cmds:
+      - migrate -path db/migrations -database "$DATABASE_URL" up
+
+  db:rollback:
+    desc: Roll back last migration
+    dir: apps/api
+    cmds:
+      - migrate -path db/migrations -database "$DATABASE_URL" down 1
+
+  db:status:
+    desc: Check migration status
+    dir: apps/api
+    cmds:
+      - migrate -path db/migrations -database "$DATABASE_URL" version
+
+  db:generate:
+    desc: Generate Go code from SQL queries
+    dir: apps/api
+    cmds:
+      - sqlc generate
