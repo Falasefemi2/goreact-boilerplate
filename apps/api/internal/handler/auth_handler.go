@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/falasefemi2/goreact-boilerplate/internal/middleware"
+	"github.com/falasefemi2/goreact-boilerplate/internal/response"
 	"github.com/falasefemi2/goreact-boilerplate/internal/service"
+	appvalidator "github.com/falasefemi2/goreact-boilerplate/internal/validator"
 )
 
 type AuthHandler struct {
@@ -18,8 +20,8 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 }
 
 type authRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email"    validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8"`
 }
 
 type authResponse struct {
@@ -29,60 +31,55 @@ type authResponse struct {
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req authRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	if req.Email == "" || req.Password == "" {
-		writeError(w, "email and password are required", http.StatusBadRequest)
+	// Validate input
+	if errs := appvalidator.Validate(req); errs != nil {
+		response.ValidationError(w, errs)
 		return
 	}
 
 	token, err := h.authService.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrEmailTaken) {
-			writeError(w, "email already in use", http.StatusConflict)
+			response.Error(w, http.StatusConflict, "email already in use")
 			return
 		}
-		writeError(w, "internal server error", http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 
-	writeJSON(w, authResponse{Token: token}, http.StatusCreated)
+	response.JSON(w, http.StatusCreated, map[string]string{"token": token})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req authRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "invalid request body", http.StatusBadRequest)
+		response.Error(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if errs := appvalidator.Validate(req); errs != nil {
+		response.ValidationError(w, errs)
 		return
 	}
 
 	token, err := h.authService.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		if errors.Is(err, service.ErrInvalidCreds) {
-			writeError(w, "invalid email or password", http.StatusUnauthorized)
+			response.Error(w, http.StatusUnauthorized, "invalid email or password")
 			return
 		}
-		writeError(w, "internal server error", http.StatusInternalServerError)
+		response.Error(w, http.StatusInternalServerError, "something went wrong")
 		return
 	}
 
-	writeJSON(w, authResponse{Token: token}, http.StatusOK)
+	response.JSON(w, http.StatusOK, map[string]string{"token": token})
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
-	writeJSON(w, map[string]string{"user_id": userID}, http.StatusOK)
-}
-
-// helpers
-func writeJSON(w http.ResponseWriter, data any, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func writeError(w http.ResponseWriter, message string, status int) {
-	writeJSON(w, map[string]string{"error": message}, status)
+	response.JSON(w, http.StatusOK, map[string]string{"user_id": userID})
 }
