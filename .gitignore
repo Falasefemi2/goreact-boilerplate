@@ -1,0 +1,17 @@
+# Go
+apps/api/bin/
+apps/api/*.exe
+
+# Node
+apps/web/node_modules/
+apps/web/dist/
+
+# Environment files — never commit these
+.env
+.env.local
+apps/api/.env
+apps/web/.env
+
+# OS
+.DS_Store
+Thumbs.db

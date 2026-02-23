@@ -1,0 +1,30 @@
+version: '3'
+
+tasks:
+  api:run:
+    desc: Run the Go API server
+    dir: apps/api
+    cmds:
+      - go run cmd/server/main.go
+
+  api:build:
+    desc: Build the Go API binary
+    dir: apps/api
+    cmds:
+      - go build -o bin/server cmd/server/main.go
+
+  web:dev:
+    desc: Start the React dev server
+    dir: apps/web
+    cmds:
+      - bun run dev
+
+  web:build:
+    desc: Build the React frontend
+    dir: apps/web
+    cmds:
+      - bun run build
+
+  dev:
+    desc: Start API and web dev servers in parallel
+    deps: [api:run, web:dev]
