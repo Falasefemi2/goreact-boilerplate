@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (email, password)
-VALUES ($1, $2)
+INSERT INTO users (email, password, role)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: GetUserByEmail :one
@@ -12,7 +12,3 @@ LIMIT 1;
 SELECT * FROM users
 WHERE id = $1
 LIMIT 1;
-
--- name: ListUsers :many
-SELECT id, email, created_at FROM users
-ORDER BY created_at DESC;

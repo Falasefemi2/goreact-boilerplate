@@ -58,3 +58,9 @@ tasks:
     dir: apps/api
     cmds:
       - sqlc generate
+
+  db:new:
+    desc: Create a new migration file
+    dir: apps/api
+    cmds:
+      - migrate create -ext sql -dir db/migrations -seq {{.CLI_ARGS}}

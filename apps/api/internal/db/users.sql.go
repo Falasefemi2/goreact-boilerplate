@@ -7,24 +7,24 @@ package db
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password)
-VALUES ($1, $2)
-RETURNING id, email, password, created_at, updated_at
+INSERT INTO users (email, password, role)
+VALUES ($1, $2, $3)
+RETURNING id, email, password, created_at, updated_at, role
 `
 
 type CreateUserParams struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	Role     string `json:"role"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Email, arg.Password)
+	row := q.db.QueryRowContext(ctx, createUser, arg.Email, arg.Password, arg.Role)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -32,12 +32,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password, created_at, updated_at FROM users
+SELECT id, email, password, created_at, updated_at, role FROM users
 WHERE email = $1
 LIMIT 1
 `
@@ -51,12 +52,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password, created_at, updated_at FROM users
+SELECT id, email, password, created_at, updated_at, role FROM users
 WHERE id = $1
 LIMIT 1
 `
@@ -70,40 +72,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.Password,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
 	)
 	return i, err
-}
-
-const listUsers = `-- name: ListUsers :many
-SELECT id, email, created_at FROM users
-ORDER BY created_at DESC
-`
-
-type ListUsersRow struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func (q *Queries) ListUsers(ctx context.Context) ([]ListUsersRow, error) {
-	rows, err := q.db.QueryContext(ctx, listUsers)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ListUsersRow
-	for rows.Next() {
-		var i ListUsersRow
-		if err := rows.Scan(&i.ID, &i.Email, &i.CreatedAt); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
