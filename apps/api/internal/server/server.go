@@ -25,7 +25,7 @@ func New(database *sql.DB, cfg *config.Config) http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{cfg.AllowedOrigin},
+		AllowedOrigins:   []string{cfg.Server.AllowedOrigin},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"Link"},
@@ -34,8 +34,15 @@ func New(database *sql.DB, cfg *config.Config) http.Handler {
 	}))
 
 	queries := db.New(database)
-	emailService := service.NewEmailService(cfg.ResendAPIKey, cfg.FromEmail)
-	authService := service.NewAuthService(queries, cfg.JWTSecret, emailService)
+	emailService := service.NewEmailService(
+		cfg.Email.ResendAPIKey,
+		cfg.Email.FromEmail,
+	)
+	authService := service.NewAuthService(
+		queries,
+		cfg.Auth.JWTSecret,
+		emailService,
+	)
 	authHandler := handler.NewAuthHandler(authService)
 	productService := service.NewProductService(queries)
 	productHandler := handler.NewProductHandler(productService)
@@ -61,7 +68,7 @@ func New(database *sql.DB, cfg *config.Config) http.Handler {
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
-		r.Use(appMiddleware.RequireAuth(cfg.JWTSecret))
+		r.Use(appMiddleware.RequireAuth(cfg.Auth.JWTSecret))
 		r.Get("/api/v1/auth/me", authHandler.Me)
 		r.Post("/api/v1/products", productHandler.Create)
 		r.Get("/api/v1/products", productHandler.List)

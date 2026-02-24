@@ -1,50 +1,117 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"os"
+	"strconv"
+	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	Port          string
-	Env           string
-	DatabaseURL   string
-	JWTSecret     string
-	AllowedOrigin string
-	ResendAPIKey  string
-	FromEmail     string
+	Primary  PrimaryConfig  `validate:"required"`
+	Server   ServerConfig   `validate:"required"`
+	Database DatabaseConfig `validate:"required"`
+	Auth     AuthConfig     `validate:"required"`
+	Email    EmailConfig    `validate:"required"`
 }
 
-func Load() *Config {
-	// In production, real env vars are set by the platform.
-	// In local dev, we load from .env file.
-	// If .env doesn't exist, we just continue — not an error.
+type PrimaryConfig struct {
+	Env string `validate:"required,oneof=development staging production"`
+}
+
+type ServerConfig struct {
+	Port          int           `validate:"required,min=1"`
+	ReadTimeout   time.Duration `validate:"required"`
+	WriteTimeout  time.Duration `validate:"required"`
+	IdleTimeout   time.Duration `validate:"required"`
+	AllowedOrigin string        `validate:"required"`
+}
+
+type DatabaseConfig struct {
+	URL             string        `validate:"required"`
+	MaxOpenConns    int           `validate:"required,min=1"`
+	MaxIdleConns    int           `validate:"required,min=0"`
+	ConnMaxLifetime time.Duration `validate:"required"`
+	ConnMaxIdleTime time.Duration `validate:"required"`
+}
+
+type AuthConfig struct {
+	JWTSecret string `validate:"required,min=32"`
+}
+
+type EmailConfig struct {
+	ResendAPIKey string `validate:"required"`
+	FromEmail    string `validate:"required,email"`
+}
+
+func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:          getEnv("PORT", "8080"),
-		Env:           getEnv("APP_ENV", "development"),
-		DatabaseURL:   getEnv("DATABASE_URL", ""),
-		JWTSecret:     getEnv("JWT_SECRET", ""),
-		AllowedOrigin: getEnv("ALLOWED_ORIGIN", "http://localhost:5173"),
-		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
-		FromEmail:     getEnv("FROM_EMAIL", "onboarding@resend.dev"),
+		Primary: PrimaryConfig{
+			Env: getEnv("APP_ENV", "development"),
+		},
+		Server: ServerConfig{
+			Port:          getEnvAsInt("PORT", 8080),
+			ReadTimeout:   getEnvAsDuration("READ_TIMEOUT", 10*time.Second),
+			WriteTimeout:  getEnvAsDuration("WRITE_TIMEOUT", 10*time.Second),
+			IdleTimeout:   getEnvAsDuration("IDLE_TIMEOUT", 60*time.Second),
+			AllowedOrigin: getEnv("ALLOWED_ORIGIN", "http://localhost:5173"),
+		},
+		Database: DatabaseConfig{
+			URL:             getEnv("DATABASE_URL", ""),
+			MaxOpenConns:    getEnvAsInt("DB_MAX_OPEN_CONNS", 25),
+			MaxIdleConns:    getEnvAsInt("DB_MAX_IDLE_CONNS", 25),
+			ConnMaxLifetime: getEnvAsDuration("DB_CONN_MAX_LIFETIME", time.Hour),
+			ConnMaxIdleTime: getEnvAsDuration("DB_CONN_MAX_IDLE_TIME", 30*time.Minute),
+		},
+		Auth: AuthConfig{
+			JWTSecret: getEnv("JWT_SECRET", ""),
+		},
+		Email: EmailConfig{
+			ResendAPIKey: getEnv("RESEND_API_KEY", ""),
+			FromEmail:    getEnv("FROM_EMAIL", "onboarding@resend.dev"),
+		},
 	}
 
-	return cfg
+	validate := validator.New()
+	if err := validate.Struct(cfg); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
+	}
+
+	return cfg, nil
 }
 
-// getEnv reads an env var, returns a fallback if not set.
-// If fallback is empty string and var is missing, it exits.
 func getEnv(key, fallback string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		if fallback == "" {
-			log.Fatalf("required environment variable %s is not set", key)
-		}
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return fallback
+}
+
+func getEnvAsInt(key string, fallback int) int {
+	valStr := os.Getenv(key)
+	if valStr == "" {
 		return fallback
+	}
+	val, err := strconv.Atoi(valStr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid integer for %s", key))
+	}
+	return val
+}
+
+func getEnvAsDuration(key string, fallback time.Duration) time.Duration {
+	valStr := os.Getenv(key)
+	if valStr == "" {
+		return fallback
+	}
+	val, err := time.ParseDuration(valStr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid duration for %s", key))
 	}
 	return val
 }

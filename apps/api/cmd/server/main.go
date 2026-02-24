@@ -1,52 +1,97 @@
 package main
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/falasefemi2/goreact-boilerplate/internal/config"
 	"github.com/falasefemi2/goreact-boilerplate/internal/server"
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-// @title           GoReact Boilerplate API
-// @version         1.0
-// @description     Production-ready Go + React boilerplate API
-// @host            localhost:8080
-// @BasePath        /
-// @securityDefinitions.apikey CookieAuth
-// @in cookie
-// @name auth_token
-func main() {
-	cfg := config.Load()
+const shutdownTimeout = 30 * time.Second
 
+func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		panic(err)
+	}
+
+	// Setup structured logger
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
 	// Connect to database
-	db, err := sql.Open("pgx", cfg.DatabaseURL)
+	db, err := sql.Open("pgx", cfg.Database.URL)
 	if err != nil {
 		slog.Error("failed to open database", "error", err)
 		os.Exit(1)
 	}
-	defer db.Close()
 
-	// Verify connection is actually alive
+	// Apply DB pool configuration
+	db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+	db.SetConnMaxIdleTime(cfg.Database.ConnMaxIdleTime)
+
+	// Verify DB connection
 	if err := db.Ping(); err != nil {
 		slog.Error("failed to connect to database", "error", err)
 		os.Exit(1)
 	}
 
 	slog.Info("database connected")
-	slog.Info("starting server", "port", cfg.Port, "env", cfg.Env)
 
-	srv := server.New(db, cfg)
+	// Initialize router
+	handler := server.New(db, cfg)
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), srv); err != nil {
-		slog.Error("server failed", "error", err)
+	// Create HTTP server using config timeouts
+	httpServer := &http.Server{
+		Addr:              fmt.Sprintf(":%d", cfg.Server.Port),
+		Handler:           handler,
+		ReadTimeout:       cfg.Server.ReadTimeout,
+		WriteTimeout:      cfg.Server.WriteTimeout,
+		IdleTimeout:       cfg.Server.IdleTimeout,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+
+	// Listen for shutdown signals
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Start server
+	go func() {
+		slog.Info("starting server",
+			"port", cfg.Server.Port,
+			"env", cfg.Primary.Env,
+		)
+
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("server failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for interrupt
+	<-ctx.Done()
+	slog.Info("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		slog.Error("graceful shutdown failed", "error", err)
 		os.Exit(1)
 	}
+
+	slog.Info("server exited cleanly")
 }
