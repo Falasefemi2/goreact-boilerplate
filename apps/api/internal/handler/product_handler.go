@@ -34,6 +34,17 @@ type updateProductRequest struct {
 	Stock       int32  `json:"stock"`
 }
 
+// @Summary      Create product
+// @Description  Create a new product
+// @Tags         products
+// @Accept       json
+// @Produce      json
+// @Param        request body createProductRequest true "Product data"
+// @Success 201 {object} ProductResponse
+// @Success 200 {array}  ProductResponse
+// @Failure      400 {object} map[string]string
+// @Security     CookieAuth
+// @Router       /api/v1/products [post]
 func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
 
@@ -62,6 +73,14 @@ func (h *ProductHandler) Create(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, product)
 }
 
+// @Summary      List products
+// @Description  Get all products for the current user
+// @Tags         products
+// @Produce      json
+// @Success 201 {object} ProductResponse
+// @Success 200 {array}  ProductResponse
+// @Security     CookieAuth
+// @Router       /api/v1/products [get]
 func (h *ProductHandler) List(w http.ResponseWriter, r *http.Request) {
 	userID := r.Context().Value(middleware.UserIDKey).(string)
 

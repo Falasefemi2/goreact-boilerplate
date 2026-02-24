@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"time"
 
 	"github.com/falasefemi2/goreact-boilerplate/internal/db"
@@ -16,12 +17,17 @@ var (
 )
 
 type AuthService struct {
-	queries   db.Querier
-	jwtSecret string
+	queries      db.Querier
+	jwtSecret    string
+	emailService *EmailService
 }
 
-func NewAuthService(queries db.Querier, jwtSecret string) *AuthService {
-	return &AuthService{queries: queries, jwtSecret: jwtSecret}
+func NewAuthService(queries db.Querier, jwtSecret string, emailService *EmailService) *AuthService {
+	return &AuthService{
+		queries:      queries,
+		jwtSecret:    jwtSecret,
+		emailService: emailService,
+	}
 }
 
 func (s *AuthService) Register(ctx context.Context, email, password string) (string, error) {
@@ -46,6 +52,17 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (str
 	if err != nil {
 		return "", err
 	}
+
+	// Send welcome email — non-blocking
+	// we don't fail registration if email fails
+	go func() {
+		if err := s.emailService.SendWelcome(user.Email); err != nil {
+			slog.Error("failed to send welcome email",
+				"email", user.Email,
+				"error", err,
+			)
+		}
+	}()
 
 	// return jwt token
 	return s.generateToken(user.ID.String())

@@ -12,6 +12,14 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
+// @title           GoReact Boilerplate API
+// @version         1.0
+// @description     Production-ready Go + React boilerplate API
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name auth_token
 func main() {
 	cfg := config.Load()
 

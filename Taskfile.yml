@@ -64,3 +64,9 @@ tasks:
     dir: apps/api
     cmds:
       - migrate create -ext sql -dir db/migrations -seq {{.CLI_ARGS}}
+
+  api:docs:
+    desc: Generate API documentation
+    dir: apps/api
+    cmds:
+      - swag init -g main.go -o docs --dir cmd/server,internal/handler

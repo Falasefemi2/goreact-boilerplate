@@ -28,6 +28,16 @@ type authResponse struct {
 	Token string `json:"token"`
 }
 
+// @Summary      Register a new user
+// @Description  Create a new user account
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body authRequest true "Register request"
+// @Success      201 {object} map[string]string
+// @Failure      400 {object} map[string]string
+// @Failure      409 {object} map[string]string
+// @Router       /api/v1/auth/register [post]
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req authRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -54,6 +64,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, map[string]string{"message": "registered successfully"})
 }
 
+// @Summary      Login
+// @Description  Login with email and password
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body authRequest true "Login request"
+// @Success      200 {object} map[string]string
+// @Failure      401 {object} map[string]string
+// @Router       /api/v1/auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req authRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

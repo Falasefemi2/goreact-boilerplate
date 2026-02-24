@@ -13,6 +13,8 @@ type Config struct {
 	DatabaseURL   string
 	JWTSecret     string
 	AllowedOrigin string
+	ResendAPIKey  string
+	FromEmail     string
 }
 
 func Load() *Config {
@@ -27,6 +29,8 @@ func Load() *Config {
 		DatabaseURL:   getEnv("DATABASE_URL", ""),
 		JWTSecret:     getEnv("JWT_SECRET", ""),
 		AllowedOrigin: getEnv("ALLOWED_ORIGIN", "http://localhost:5173"),
+		ResendAPIKey:  getEnv("RESEND_API_KEY", ""),
+		FromEmail:     getEnv("FROM_EMAIL", "onboarding@resend.dev"),
 	}
 
 	return cfg
