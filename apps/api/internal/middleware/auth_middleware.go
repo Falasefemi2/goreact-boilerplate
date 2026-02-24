@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -15,16 +14,15 @@ const UserIDKey contextKey = "userID"
 func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract token from Authorization: Bearer <token>
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			// Read token from httpOnly cookie
+			cookie, err := r.Cookie("auth_token")
+			if err != nil {
 				http.Error(w, `{"error":"missing token"}`, http.StatusUnauthorized)
 				return
 			}
 
-			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+			tokenStr := cookie.Value
 
-			// Verify the token
 			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 				if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 					return nil, jwt.ErrSignatureInvalid
@@ -37,7 +35,6 @@ func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Extract user ID and add to context
 			claims := token.Claims.(jwt.MapClaims)
 			userID := claims["sub"].(string)
 

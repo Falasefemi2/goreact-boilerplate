@@ -35,7 +35,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validate input
 	if errs := appvalidator.Validate(req); errs != nil {
 		response.ValidationError(w, errs)
 		return
@@ -51,7 +50,8 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.JSON(w, http.StatusCreated, map[string]string{"token": token})
+	setAuthCookie(w, token)
+	response.JSON(w, http.StatusCreated, map[string]string{"message": "registered successfully"})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +76,32 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.JSON(w, http.StatusOK, map[string]string{"token": token})
+	setAuthCookie(w, token)
+	response.JSON(w, http.StatusOK, map[string]string{"message": "logged in successfully"})
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    "",
+		HttpOnly: true,
+		Path:     "/",
+		MaxAge:   -1, // delete the cookie immediately
+	})
+	response.JSON(w, http.StatusOK, map[string]string{"message": "logged out"})
+}
+
+// setAuthCookie sets the JWT as an httpOnly cookie
+func setAuthCookie(w http.ResponseWriter, token string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "auth_token",
+		Value:    token,
+		HttpOnly: true, // not accessible via JavaScript
+		Path:     "/",
+		MaxAge:   86400, // 24 hours in seconds
+		SameSite: http.SameSiteLaxMode,
+		// Secure: true  // uncomment in production (requires HTTPS)
+	})
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"net/http"
 
+	"github.com/falasefemi2/goreact-boilerplate/internal/config"
 	"github.com/falasefemi2/goreact-boilerplate/internal/db"
 	"github.com/falasefemi2/goreact-boilerplate/internal/handler"
 	appMiddleware "github.com/falasefemi2/goreact-boilerplate/internal/middleware"
@@ -13,23 +14,23 @@ import (
 	"github.com/go-chi/cors"
 )
 
-func New(database *sql.DB, jwtSecret string) http.Handler {
+func New(database *sql.DB, cfg *config.Config) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:5173"}, // Vite dev server
+		AllowedOrigins:   []string{cfg.AllowedOrigin}, // must be exact, not *
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
+		AllowCredentials: true, // required for cookies
 		MaxAge:           300,
 	}))
 
 	queries := db.New(database)
 
-	authService := service.NewAuthService(queries, jwtSecret)
+	authService := service.NewAuthService(queries, cfg.JWTSecret)
 	authHandler := handler.NewAuthHandler(authService)
 
 	productService := service.NewProductService(queries)
@@ -37,7 +38,7 @@ func New(database *sql.DB, jwtSecret string) http.Handler {
 
 	// Protected routes
 	r.Group(func(r chi.Router) {
-		r.Use(appMiddleware.RequireAuth(jwtSecret))
+		r.Use(appMiddleware.RequireAuth(cfg.JWTSecret))
 
 		// Auth
 		r.Get("/api/v1/auth/me", authHandler.Me)
@@ -53,6 +54,7 @@ func New(database *sql.DB, jwtSecret string) http.Handler {
 	// Protected routes — anything here requires a valid JWT
 	r.Post("/api/v1/auth/register", authHandler.Register)
 	r.Post("/api/v1/auth/login", authHandler.Login)
+	r.Post("/api/v1/auth/logout", authHandler.Logout)
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	})

@@ -35,7 +35,7 @@ func main() {
 	slog.Info("database connected")
 	slog.Info("starting server", "port", cfg.Port, "env", cfg.Env)
 
-	srv := server.New(db, cfg.JWTSecret)
+	srv := server.New(db, cfg)
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), srv); err != nil {
 		slog.Error("server failed", "error", err)
