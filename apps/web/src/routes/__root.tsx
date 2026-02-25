@@ -1,5 +1,4 @@
-import { createRootRoute, Outlet, Navigate } from "@tanstack/react-router";
-import { useMe } from "../hooks/useAuth";
+import { createRootRoute, Outlet } from "@tanstack/react-router";
 
 export const Route = createRootRoute({
   component: RootLayout,

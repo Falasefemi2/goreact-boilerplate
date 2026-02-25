@@ -2,6 +2,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useLogin } from "../hooks/useAuth";
 import type { ApiError } from "../types/api";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardHeader,
+  CardPanel,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -19,6 +30,11 @@ function LoginPage() {
     e.preventDefault();
     setError("");
 
+    if (!email || !password) {
+      setError("Email and password are required");
+      return;
+    }
+
     try {
       await login.mutateAsync({ email, password });
       navigate({ to: "/products" });
@@ -29,40 +45,50 @@ function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", padding: 24 }}>
-      <h1>Login</h1>
+    <div className="flex items-center justify-center min-h-screen">
+      <Card className="w-full max-w-xs">
+        <CardHeader>
+          <CardTitle>Login to your account</CardTitle>
+          <CardAction>
+            <Link
+              className="text-muted-foreground text-sm hover:underline"
+              to="/register"
+            >
+              Register
+            </Link>
+          </CardAction>
+        </CardHeader>
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+        <CardPanel>
+          <Form onSubmit={handleSubmit}>
+            <Field>
+              <FieldLabel>Email</FieldLabel>
+              <Input
+                placeholder="Enter your email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
 
-        <div>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+            <Field>
+              <FieldLabel>Password</FieldLabel>
+              <Input
+                placeholder="Enter your password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <button type="submit" disabled={login.isPending}>
-          {login.isPending ? "Logging in..." : "Login"}
-        </button>
-      </form>
-
-      <p>
-        No account? <Link to="/register">Register</Link>
-      </p>
+            <Button className="w-full" type="submit" disabled={login.isPending}>
+              {login.isPending ? "Logging in..." : "Login"}
+            </Button>
+          </Form>
+        </CardPanel>
+      </Card>
     </div>
   );
 }

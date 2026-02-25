@@ -2,6 +2,17 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useRegister } from "../hooks/useAuth";
 import type { ApiError } from "../types/api";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardAction,
+  CardHeader,
+  CardPanel,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Form } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/register")({
   component: RegisterPage,
@@ -29,40 +40,54 @@ function RegisterPage() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", padding: 24 }}>
-      <h1>Register</h1>
+    <div className="flex items-center justify-center min-h-screen">
+      <Card className="w-full max-w-xs">
+        <CardHeader>
+          <CardTitle>Register Your account</CardTitle>
+          <CardAction>
+            <Link
+              to="/login"
+              className="text-muted-foreground text-sm hover:underline"
+            >
+              Login
+            </Link>
+          </CardAction>
+        </CardHeader>
 
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+        <CardPanel>
+          <Form onSubmit={handleSubmit}>
+            <Field>
+              <FieldLabel>Email</FieldLabel>
+              <Input
+                placeholder="Enter your email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </Field>
 
-        <div>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+            <Field>
+              <FieldLabel>Password</FieldLabel>
+              <Input
+                placeholder="Enter your password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </Field>
 
-        {error && <p style={{ color: "red" }}>{error}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <button type="submit" disabled={register.isPending}>
-          {register.isPending ? "Creating account..." : "Register"}
-        </button>
-      </form>
-
-      <p>
-        Have an account? <Link to="/login">Login</Link>
-      </p>
+            <Button
+              className="w-full"
+              type="submit"
+              disabled={register.isPending}
+            >
+              {register.isPending ? "Creating account..." : "Register"}
+            </Button>
+          </Form>
+        </CardPanel>
+      </Card>
     </div>
   );
 }

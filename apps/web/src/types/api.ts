@@ -22,12 +22,17 @@ export interface User {
   updated_at: string;
 }
 
+interface NullableString {
+  String: string;
+  Valid: boolean;
+}
+
 // mirrors Go's Product struct
 export interface Product {
   id: string;
   user_id: string;
   name: string;
-  description: string | null;
+  description: NullableString;
   price: string;
   stock: number;
   created_at: string;
